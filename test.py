@@ -1,48 +1,44 @@
-# 
-# Smallest enclosing circle - Test suite (Python)
-# 
-# Copyright (c) 2017 Project Nayuki
-# https://www.nayuki.io/page/smallest-enclosing-circle
-# 
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Lesser General Public License for more details.
-# 
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program (see COPYING.txt and COPYING.LESSER.txt).
-# If not, see <http://www.gnu.org/licenses/>.
-# 
-
 import random
 import unittest
 import algorithm
+from typing import List, Tuple
 
-
-# ---- Test suite functions ----
 
 class SmallestEnclosingCircleTest(unittest.TestCase):
+    """Basic tests for smallest enclosing circle algorithm."""
 
-    def test_matching_naive_algorithm(self):
+    _EPSILON = 1e-12  # epsilon used to compare if results are comparatively equal
+
+    @staticmethod
+    def _make_random_points(n: int) -> List[Tuple[float, float]]:
+        """Create random input of points either discretely or normally."""
+
+        if random.random() < 0.2:  # Discrete lattice (to have a chance of duplicated points)
+            return [(random.randrange(10), random.randrange(10)) for _ in range(n)]
+        else:  # Gaussian distribution
+            return [(random.gauss(0, 1), random.gauss(0, 1)) for _ in range(n)]
+
+    def test_matching_naive_algorithm(self) -> None:
+        """Check that current algorithm gives the same results as the naive approach."""
+
         trials = 1000
         for _ in range(trials):
-            points = _make_random_points(random.randint(1, 30))
-            reference = _smallest_enclosing_circle_naive(points)
+            points = self._make_random_points(random.randint(1, 30))
+            reference = algorithm.smallest_enclosing_circle_naive(points)
             actual = algorithm.make_circle(points)
-            self.assertAlmostEqual(actual[0], reference[0], delta=_EPSILON)
-            self.assertAlmostEqual(actual[1], reference[1], delta=_EPSILON)
-            self.assertAlmostEqual(actual[2], reference[2], delta=_EPSILON)
+            self.assertAlmostEqual(actual[0], reference[0], delta=self._EPSILON)
+            self.assertAlmostEqual(actual[1], reference[1], delta=self._EPSILON)
+            self.assertAlmostEqual(actual[2], reference[2], delta=self._EPSILON)
 
-    def test_translation(self):
+    def test_translation(self) -> None:
+        """Check that if initial points are moved around (translated linearly) the result won't change.
+
+         Points are moved by gaussian random shift with lambda=0 and sigma=1."""
+
         trials = 100
         checks = 10
         for _ in range(trials):
-            points = _make_random_points(random.randint(1, 300))
+            points = self._make_random_points(random.randint(1, 300))
             reference = algorithm.make_circle(points)
 
             for _ in range(checks):
@@ -51,15 +47,19 @@ class SmallestEnclosingCircleTest(unittest.TestCase):
                 newpoints = [(x + dx, y + dy) for (x, y) in points]
 
                 translated = algorithm.make_circle(newpoints)
-                self.assertAlmostEqual(translated[0], reference[0] + dx, delta=_EPSILON)
-                self.assertAlmostEqual(translated[1], reference[1] + dy, delta=_EPSILON)
-                self.assertAlmostEqual(translated[2], reference[2], delta=_EPSILON)
+                self.assertAlmostEqual(translated[0], reference[0] + dx, delta=self._EPSILON)
+                self.assertAlmostEqual(translated[1], reference[1] + dy, delta=self._EPSILON)
+                self.assertAlmostEqual(translated[2], reference[2], delta=self._EPSILON)
 
-    def test_scaling(self):
+    def test_scaling(self) -> None:
+        """Check that if initial points are moved around (scaled) the result won't change.
+
+        Points are scaled by having coordinated multiplied by random gaussian shift with lambda=0 and sigma=1."""
+
         trials = 100
         checks = 10
         for _ in range(trials):
-            points = _make_random_points(random.randint(1, 300))
+            points = self._make_random_points(random.randint(1, 300))
             reference = algorithm.make_circle(points)
 
             for _ in range(checks):
@@ -67,61 +67,10 @@ class SmallestEnclosingCircleTest(unittest.TestCase):
                 newpoints = [(x * scale, y * scale) for x, y in points]
 
                 scaled = algorithm.make_circle(newpoints)
-                self.assertAlmostEqual(scaled[0], reference[0] * scale, delta=_EPSILON)
-                self.assertAlmostEqual(scaled[1], reference[1] * scale, delta=_EPSILON)
-                self.assertAlmostEqual(scaled[2], reference[2] * abs(scale), delta=_EPSILON)
+                self.assertAlmostEqual(scaled[0], reference[0] * scale, delta=self._EPSILON)
+                self.assertAlmostEqual(scaled[1], reference[1] * scale, delta=self._EPSILON)
+                self.assertAlmostEqual(scaled[2], reference[2] * abs(scale), delta=self._EPSILON)
 
-
-# ---- Helper functions ----
-
-def _make_random_points(n):
-    if random.random() < 0.2:  # Discrete lattice (to have a chance of duplicated points)
-        return [(random.randrange(10), random.randrange(10)) for _ in range(n)]
-    else:  # Gaussian distribution
-        return [(random.gauss(0, 1), random.gauss(0, 1)) for _ in range(n)]
-
-
-# Returns the smallest enclosing circle in O(n^4) time using the naive algorithm.
-def _smallest_enclosing_circle_naive(points):
-    # Degenerate cases
-    if len(points) == 0:
-        return None
-    elif len(points) == 1:
-        return points[0][0], points[0][1], 0
-
-    # Try all unique pairs
-    result = None
-    for i in range(len(points)):
-        p = points[i]
-        for j in range(i + 1, len(points)):
-            q = points[j]
-            c = algorithm.make_diameter(p, q)
-            if (result is None or c[2] < result[2]) and \
-                    all(algorithm.is_in_circle(c, r) for r in points):
-                result = c
-    if result is not None:
-        return result  # This optimization is not mathematically proven
-
-    # Try all unique triples
-    for i in range(len(points)):
-        p = points[i]
-        for j in range(i + 1, len(points)):
-            q = points[j]
-            for k in range(j + 1, len(points)):
-                r = points[k]
-                c = algorithm.make_circumcircle(p, q, r)
-                if c is not None and (result is None or c[2] < result[2]) and \
-                        all(algorithm.is_in_circle(c, s) for s in points):
-                    result = c
-
-    if result is None:
-        raise AssertionError()
-    return result
-
-
-_EPSILON = 1e-12
-
-# ---- Main runner ----
 
 if __name__ == "__main__":
     unittest.main()
