@@ -148,7 +148,7 @@ def smallest_enclosing_circle_naive(points: List[Tuple[float, float]]) -> Option
                     all(is_in_circle(c, r) for r in points):
                 result = c
     if result is not None:
-        return result  # This optimization is not mathematically proven
+        return result
 
     # Try all unique triples
     for i in range(len(points)):
